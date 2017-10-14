@@ -1,0 +1,125 @@
+#!/usr/bin/env node
+
+// Show logs
+process.env.DEBUG = process.env.DEBUG || 'nuxt:*'
+
+// #credit - a lot of it borrowed from nuxt setup
+const _ = require('lodash')
+const debug = require('debug')('vuxtra:dev')
+debug.color = 4
+const fs = require('fs')
+const parseArgs = require('minimist')
+const { Nuxt, Builder } = require('nuxt')
+const chokidar = require('chokidar')
+const path = require('path')
+const resolve = path.resolve
+const pkg = require(path.join('..','package.json'))
+
+const argv = parseArgs(process.argv.slice(2), {
+    alias: {
+        h: 'help',
+        H: 'hostname',
+        p: 'port',
+        c: 'config-file',
+        v: 'version'
+    },
+    boolean: ['h', 'v'],
+    string: ['H', 'c'],
+    default: {
+        c: 'vuxtra.config.js'
+    }
+})
+
+if(argv.version){
+    console.log(pkg.version)
+    process.exit(0)
+}
+
+if (argv.hostname === '') {
+    console.error(`> Provided hostname argument has no value`)
+    process.exit(1)
+}
+
+if (argv.help) {
+    console.log(`
+    VUXTRA v${pkg.version}
+    Description
+      Starts the app in DEV mode with hot reloading and other goodies
+    Usage
+      $ vuxtra dev <dir> -p <port number> -H <hostname>
+    Options
+      --port, -p          Start application on specific port (default: 3000)
+      --hostname, -H      Start application on specific host (default: 127.0.0.1)
+      --config-file, -c   Specify alternative config file and path (default: vuxtra.config.js)
+      --help, -h          Help message ( this one )
+  `)
+    process.exit(0)
+}
+
+const rootDir = resolve(argv._[0] || '.')
+const vuxtraConfigFile = resolve(rootDir, argv['config-file'])
+
+// Load config once for chokidar
+const nuxtConfig = loadVuxtraConfig()
+_.defaultsDeep(nuxtConfig, { watchers: { chokidar: { ignoreInitial: true } } })
+
+// Start dev
+let dev = startDev()
+
+// Watcher starts now
+chokidar
+    .watch(vuxtraConfigFile, nuxtConfig.watchers.chokidar)
+    .on('all', _.debounce(() => {
+        debug('[vuxtra.config.js] changed')
+        debug('Rebuilding the app...')
+        dev = dev.then(startDev)
+    }), 2500)
+
+function startDev (oldVuxtra) {
+    // Get latest environment variables
+    const port = argv.port || process.env.PORT || process.env.npm_package_config_vuxtra_port
+    const host = argv.hostname || process.env.HOST || process.env.npm_package_config_vuxtra_host
+
+    // Load options
+    let options = {}
+    try {
+        options = loadVuxtraConfig()
+    } catch (err) {
+        console.error(err)
+        return
+    }
+
+    // Create nuxt and builder instance
+    const nuxt = new Nuxt(options)
+    const builder = new Builder(nuxt)
+
+    return Promise.resolve()
+        .then(() => builder.build()) // 1- Start build
+        .then(() => oldVuxtra ? oldVuxtra.close() : Promise.resolve()) // 2- Close old nuxt after successful build
+        .then(() => nuxt.listen(port, host)) // 3- Start listening
+        .then(() => nuxt) // 4- Pass new nuxt to watch chain
+}
+
+function loadVuxtraConfig () {
+    let options = {}
+
+    if (fs.existsSync(nuxtConfigFile)) {
+        delete require.cache[nuxtConfigFile]
+        options = require(nuxtConfigFile)
+    } else if (argv['config-file'] !== 'nuxt.config.js') {
+        console.error(`> Could not load config file ${argv['config-file']}`)
+        process.exit(1)
+    }
+
+    if (typeof options.rootDir !== 'string') {
+        options.rootDir = rootDir
+    }
+
+    // Force development mode for add hot reloading and watching changes
+    options.dev = true
+
+    // Nuxt Mode
+    options.mode = (argv['spa'] && 'spa') || (argv['universal'] && 'universal') || options.mode
+
+    return options
+}

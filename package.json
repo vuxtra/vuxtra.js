@@ -1,0 +1,27 @@
+{
+  "name": "vuxtra",
+  "version": "0.1.0",
+  "description": "Vuxtra - Realtime based full stack framework based on Vue.js && Nuxt.js && Koa ",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/vuxtra/vuxtra.js.git"
+  },
+  "keywords": [
+    "vue.js",
+    "nuxt.js",
+    "koa",
+    "api",
+    "realtime",
+    "javascript"
+  ],
+  "author": "Faruk Brbovic @fbrbovic",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/vuxtra/vuxtra.js/issues"
+  },
+  "homepage": "https://github.com/vuxtra/vuxtra.js#readme"
+}

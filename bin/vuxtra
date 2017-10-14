@@ -1,0 +1,32 @@
+#!/usr/bin/env node
+const path = require('path')
+const spawn = require('cross-spawn')
+const pkg = require('../package.json')
+
+const defaultCommand = 'dev'
+    'build',
+    'start',
+    defaultCommand
+])
+
+var cmd = process.argv[2]
+
+if (commands.has(cmd)) {
+    process.argv.splice(2, 1)
+} else {
+    cmd = defaultCommand
+}
+
+const bin = path.resolve(path.join(__dirname, cmd))
+
+const startProcess = () => {
+    const proc = spawn(bin, args, { stdio: 'inherit'})
+    proc.on('close', (code) => process.exit(code))
+    proc.on('error', (err) => {
+        console.error(err)
+        process.exit(1)
+    })
+    return proc
+}
+
+const proc = startProcess()
