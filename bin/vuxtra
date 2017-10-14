@@ -3,7 +3,10 @@ const path = require('path')
 const spawn = require('cross-spawn')
 const pkg = require('../package.json')
 
+
 const defaultCommand = 'dev'
+const commands = new Set([
+    'init',
     'build',
     'start',
     defaultCommand
