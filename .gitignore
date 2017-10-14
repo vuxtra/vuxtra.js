@@ -3,6 +3,7 @@ node_modules
 
 # editor
 .idea
+.idea/*
 
 # logs
 npm-debug.log
