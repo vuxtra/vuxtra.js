@@ -3,12 +3,18 @@
   "version": "0.1.0",
   "description": "Vuxtra - Realtime based full stack framework based on (VUe + nuXT + extRA) ",
   "main": "index.js",
+  "bin": {
+    "vuxtra": "./bin/vuxtra"
+  },
   "scripts": {
     "test": "npm run lint && cross-env NODE_ENV=test npm run build:vuxtra && nyc ava --verbose --serial test/ -- && nyc report --reporter=html",
     "coverage": "nyc report --reporter=text-lcov > coverage.lcov && codecov",
     "lint": "eslint --ext .js,.vue bin lib pages test/*.js --ignore-pattern app",
-    "build": "rimraf dist/ && npm run build:vuxtra",
+    "build": "rimraf dist/ && npm run build:vuxtra && npm run build:sccbroker && npm run build:sccmaster && npm run build:sccworker",
     "build:vuxtra": "rollup -c build/rollup.config.js --environment TARGET:vuxtra",
+    "build:sccbroker": "rollup -c build/rollup.config.js --environment TARGET:sccbroker",
+    "build:sccmaster": "rollup -c build/rollup.config.js --environment TARGET:sccmaster",
+    "build:sccworker": "rollup -c build/rollup.config.js --environment TARGET:sccworker",
     "watch": "npm run build:vuxtra -- -w"
   },
   "engines": {
@@ -40,8 +46,7 @@
     "connect": "3.0.1",
     "cross-spawn": "^5.1.0",
     "debug": "^3.1.0",
-    "koa": "^2.3.0",
-    "koa-router": "^7.2.1",
+    "express": "^4.16.2",
     "minimist": "^1.2.0",
     "morgan": "1.7.0",
     "nuxt": "^1.0.0-rc11",

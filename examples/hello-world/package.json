@@ -1,0 +1,13 @@
+{
+  "name": "hello-world",
+  "version": "1.0.0",
+  "description": "Sample hello-world for vuxtra.js framework",
+  "scripts": {
+    "dev": "vuxtra",
+    "build": "vuxtra build",
+    "start": "vuxtra start"
+  },
+  "dependencies": {
+    "vuxtra": "file:../.."
+  }
+}

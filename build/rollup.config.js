@@ -34,16 +34,16 @@ const builds = {
         entry: resolve(libDir, 'index.js'),
         file: resolve(distDir, 'vuxtra.js')
     },
-    sccBroker: {
-        entry: resolve(libDir, 'sccBroker.js'),
+    sccbroker: {
+        entry: resolve(libDir, 'socketserver/sccBroker.js'),
         file: resolve(distDir, 'sccBroker.js')
     },
-    sccMaster: {
-        entry: resolve(libDir, 'sccMaster.js'),
+    sccmaster: {
+        entry: resolve(libDir, 'socketserver/sccMaster.js'),
         file: resolve(distDir, 'sccMaster.js')
     },
-    sccWorker: {
-        entry: resolve(libDir, 'sccWorker.js'),
+    sccworker: {
+        entry: resolve(libDir, 'socketserver/sccWorker.js'),
         file: resolve(distDir, 'sccWorker.js')
     }
 }
