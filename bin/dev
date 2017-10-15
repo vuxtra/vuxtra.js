@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 
 // Show logs
-process.env.DEBUG = process.env.DEBUG || 'nuxt:*'
+process.env.DEBUG = process.env.DEBUG || 'vuxtra:*'
 
 // #credit - a lot of it borrowed from nuxt setup
 const _ = require('lodash')
@@ -9,7 +9,7 @@ const debug = require('debug')('vuxtra:dev')
 debug.color = 4
 const fs = require('fs')
 const parseArgs = require('minimist')
-const { Nuxt, Builder } = require('nuxt')
+const { Vuxtra } = require('../')
 const chokidar = require('chokidar')
 const path = require('path')
 const resolve = path.resolve
@@ -60,15 +60,15 @@ const rootDir = resolve(argv._[0] || '.')
 const vuxtraConfigFile = resolve(rootDir, argv['config-file'])
 
 // Load config once for chokidar
-const nuxtConfig = loadVuxtraConfig()
-_.defaultsDeep(nuxtConfig, { watchers: { chokidar: { ignoreInitial: true } } })
+const vuxtraConfig = loadVuxtraConfig()
+_.defaultsDeep(vuxtraConfig, { watchers: { chokidar: { ignoreInitial: true } } })
 
 // Start dev
 let dev = startDev()
 
 // Watcher starts now
 chokidar
-    .watch(vuxtraConfigFile, nuxtConfig.watchers.chokidar)
+    .watch(vuxtraConfigFile, vuxtraConfig.watchers.chokidar)
     .on('all', _.debounce(() => {
         debug('[vuxtra.config.js] changed')
         debug('Rebuilding the app...')
@@ -89,24 +89,18 @@ function startDev (oldVuxtra) {
         return
     }
 
-    // Create nuxt and builder instance
-    const nuxt = new Nuxt(options)
-    const builder = new Builder(nuxt)
+    let vuxtra = new Vuxtra(options)
+    vuxtra.startDev()
 
-    return Promise.resolve()
-        .then(() => builder.build()) // 1- Start build
-        .then(() => oldVuxtra ? oldVuxtra.close() : Promise.resolve()) // 2- Close old nuxt after successful build
-        .then(() => nuxt.listen(port, host)) // 3- Start listening
-        .then(() => nuxt) // 4- Pass new nuxt to watch chain
 }
 
 function loadVuxtraConfig () {
     let options = {}
 
-    if (fs.existsSync(nuxtConfigFile)) {
-        delete require.cache[nuxtConfigFile]
-        options = require(nuxtConfigFile)
-    } else if (argv['config-file'] !== 'nuxt.config.js') {
+    if (fs.existsSync(vuxtraConfigFile)) {
+        delete require.cache[vuxtraConfigFile]
+        options = require(vuxtraConfigFile)
+    } else if (argv['config-file'] !== 'vuxtra.config.js') {
         console.error(`> Could not load config file ${argv['config-file']}`)
         process.exit(1)
     }
@@ -114,12 +108,6 @@ function loadVuxtraConfig () {
     if (typeof options.rootDir !== 'string') {
         options.rootDir = rootDir
     }
-
-    // Force development mode for add hot reloading and watching changes
-    options.dev = true
-
-    // Nuxt Mode
-    options.mode = (argv['spa'] && 'spa') || (argv['universal'] && 'universal') || options.mode
 
     return options
 }

@@ -24,7 +24,7 @@ const libDir = resolve(rootDir, 'lib')
 const distDir = resolve(rootDir, 'dist')
 
 const aliases = {
-    core: resolve(libDir, 'core/index.js'),
+    vuxtra: resolve(libDir, 'index.js'),
     app: resolve(libDir, 'app')
 }
 
@@ -34,9 +34,17 @@ const builds = {
         entry: resolve(libDir, 'index.js'),
         file: resolve(distDir, 'vuxtra.js')
     },
-    core: {
-        entry: resolve(libDir, 'core/index.js'),
-        file: resolve(distDir, 'core.js')
+    sccBroker: {
+        entry: resolve(libDir, 'sccBroker.js'),
+        file: resolve(distDir, 'sccBroker.js')
+    },
+    sccMaster: {
+        entry: resolve(libDir, 'sccMaster.js'),
+        file: resolve(distDir, 'sccMaster.js')
+    },
+    sccWorker: {
+        entry: resolve(libDir, 'sccWorker.js'),
+        file: resolve(distDir, 'sccWorker.js')
     }
 }
 
@@ -49,7 +57,7 @@ function genConfig (opts) {
             format: 'cjs',
             sourcemap: true
         },
-        external: ['fs', 'path', 'http', 'module', 'vue-server-renderer/server-plugin', 'vue-server-renderer/client-plugin']
+        external: ['fs', 'path', 'http']
             .concat(dependencies, opts.external),
         banner: opts.banner || banner,
         name: opts.modulename || 'Vuxtra',
@@ -73,7 +81,7 @@ function genConfig (opts) {
                 presets: [
                     ['env', {
                         targets: {
-                            node: '6.11.0'
+                            node: '8.7.0'
                         },
                         modules: false
                     }]

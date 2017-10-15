@@ -15,9 +15,10 @@ const commands = new Set([
 var cmd = process.argv[2]
 
 if (commands.has(cmd)) {
-    process.argv.splice(2, 1)
+    args = process.argv.slice(3)
 } else {
     cmd = defaultCommand
+    args = process.argv.slice(2)
 }
 
 const bin = path.resolve(path.join(__dirname, cmd))
