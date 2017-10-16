@@ -45,6 +45,14 @@ const builds = {
     sccworker: {
         entry: resolve(libDir, 'socketserver/sccWorker.js'),
         file: resolve(distDir, 'sccWorker.js')
+    },
+    nuxtModuleVuxtra: {
+        entry: resolve(libDir, 'nuxt/modules/vuxtra/index.js'),
+        file: resolve(distDir, 'nuxt/modules/vuxtra/index.js')
+    },
+    nuxtPluginVuxtra: {
+        entry: resolve(libDir, 'nuxt/modules/vuxtra/plugin.js'),
+        file: resolve(distDir, 'nuxt/modules/vuxtra/Plugin.js')
     }
 }
 
@@ -109,6 +117,5 @@ function genConfig (opts) {
 if (process.env.TARGET) {
     module.exports = genConfig(builds[process.env.TARGET])
 } else {
-    exports.getBuild = name => genConfig(builds[name])
-    exports.getAllBuilds = () => Object.keys(builds).map(name => genConfig(builds[name]))
+    module.exports = Object.keys(builds).map(name => genConfig(builds[name]))
 }

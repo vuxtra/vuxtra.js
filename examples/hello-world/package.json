@@ -8,6 +8,6 @@
     "start": "vuxtra start"
   },
   "dependencies": {
-    "vuxtra": "file:../.."
+    "vuxtra": "latest"
   }
 }

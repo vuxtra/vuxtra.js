@@ -10,11 +10,8 @@
     "test": "npm run lint && cross-env NODE_ENV=test npm run build:vuxtra && nyc ava --verbose --serial test/ -- && nyc report --reporter=html",
     "coverage": "nyc report --reporter=text-lcov > coverage.lcov && codecov",
     "lint": "eslint --ext .js,.vue bin lib pages test/*.js --ignore-pattern app",
-    "build": "rimraf dist/ && npm run build:vuxtra && npm run build:sccbroker && npm run build:sccmaster && npm run build:sccworker",
-    "build:vuxtra": "rollup -c build/rollup.config.js --environment TARGET:vuxtra",
-    "build:sccbroker": "rollup -c build/rollup.config.js --environment TARGET:sccbroker",
-    "build:sccmaster": "rollup -c build/rollup.config.js --environment TARGET:sccmaster",
-    "build:sccworker": "rollup -c build/rollup.config.js --environment TARGET:sccworker",
+    "build": "rimraf dist/ && npm run build:all",
+    "build:all": "rollup -c build/rollup.config.js",
     "watch": "npm run build:vuxtra -- -w"
   },
   "engines": {
@@ -56,7 +53,7 @@
     "scc-broker-client": "~1.5.0",
     "serve-static": "1.11.2",
     "socketcluster": "~8.0.2",
-    "socketcluster-client": "~8.0.1",
+    "socketcluster-client": "^8.0.1",
     "tappable": "^1.1.0",
     "webpack": "^3.7.1",
     "webpack-bundle-analyzer": "^2.9.0",
