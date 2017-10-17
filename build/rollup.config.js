@@ -52,7 +52,12 @@ const builds = {
     },
     nuxtPluginVuxtra: {
         entry: resolve(libDir, 'nuxt/modules/vuxtra/plugin.js'),
-        file: resolve(distDir, 'nuxt/modules/vuxtra/Plugin.js')
+        file: resolve(distDir, 'nuxt/modules/vuxtra/Plugin.js'),
+    },
+    nuxtPluginVuxtraes: {
+        entry: resolve(libDir, 'nuxt/modules/vuxtra/plugin.js'),
+        file: resolve(distDir, 'nuxt/modules/vuxtra/Plugin.es.js'),
+        format: 'es'
     }
 }
 
@@ -62,7 +67,7 @@ function genConfig (opts) {
         input: opts.entry,
         output: {
             file: opts.file,
-            format: 'cjs',
+            format: opts.format || 'cjs',
             sourcemap: true
         },
         external: ['fs', 'path', 'http']
