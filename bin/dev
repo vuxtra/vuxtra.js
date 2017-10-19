@@ -9,7 +9,7 @@ const debug = require('debug')('vuxtra:dev')
 debug.color = 4
 const fs = require('fs')
 const parseArgs = require('minimist')
-const { Vuxtra } = require('../')
+const { VuxtraBoot } = require('../')
 const chokidar = require('chokidar')
 const path = require('path')
 const resolve = path.resolve
@@ -89,8 +89,8 @@ function startDev (oldVuxtra) {
         return
     }
 
-    let vuxtra = new Vuxtra(options)
-    vuxtra.startDev()
+    let vuxtraBoot = new VuxtraBoot(options)
+    vuxtraBoot.startDev()
 
 }
 
