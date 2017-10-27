@@ -11,9 +11,10 @@ test('VuxtraBoot Class', t => {
 test.serial('VuxtraBoot Devstart', async t => {
 
     const vuxtraBoot = new VuxtraBoot({
-        rootDir: resolve(__dirname, 'fixtures', 'empty')
+        rootDir: resolve(__dirname, 'fixtures', 'basic')
     })
     t.is(typeof vuxtraBoot, 'object')
+
     t.is(vuxtraBoot.options.vuxtra.dev, true)
 
 
