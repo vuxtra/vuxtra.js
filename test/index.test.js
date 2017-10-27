@@ -16,21 +16,50 @@ test.serial('VuxtraBoot Devstart', async t => {
     t.is(typeof vuxtraBoot, 'object')
     t.is(vuxtraBoot.options.vuxtra.dev, true)
 
+
     vuxtraBoot.startDev()
 
-    let tt = await new Promise((resolve, reject) => {
-        vuxtraBoot.hooks.readySocketserver.tapPromise("test devstart",(vuxtraBoot) => {
+    try {
+        let promisaAll = await Promise.all([
+            new Promise((resolve, reject) => {
+                vuxtraBoot.hooks.readySocketserver.tapPromise("readySocketServer", (vuxtraBoot) => {
+                    resolve(vuxtraBoot)
 
-            resolve(vuxtraBoot)
+                })
 
-        })
+                vuxtraBoot.hooks.failSocketserver.tapPromise("failedSocketServer", (vuxtraBoot, e) => {
+                    reject(e)
 
-        vuxtraBoot.hooks.failSocketserver.tapPromise("test devstart",(vuxtraBoot) => {
+                })
+            }),
+            new Promise((resolve, reject) => {
+                vuxtraBoot.hooks.readySocketserverWorkerCluster.tapPromise("readySocketserverWorkerCluster", (vuxtraBoot) => {
+                    resolve(vuxtraBoot)
 
-            reject(vuxtraBoot)
+                })
 
-        })
-    });
+                vuxtraBoot.hooks.failSocketserver.tapPromise("failedSocketServer", (vuxtraBoot, e) => {
+                    reject(e)
+
+                })
+            }),
+            new Promise((resolve, reject) => {
+                vuxtraBoot.hooks.vuxtraBuilt.tapPromise("vuxtraBuilt", (vuxtraBoot) => {
+                    resolve(vuxtraBoot)
+
+                })
+
+                vuxtraBoot.hooks.failSocketserver.tapPromise("failedSocketServer", (vuxtraBoot, e) => {
+                    reject(e)
+                })
+            })
+
+        ])
+
+        t.pass('all services started and vuxtra built')
+    } catch (e) {
+        t.fail(e.message)
+    }
 
 
 })
