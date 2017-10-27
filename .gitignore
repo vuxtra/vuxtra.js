@@ -16,3 +16,13 @@ dist
 
 # Backpack build
 build
+
+# Coverage support
+coverage
+*.lcov
+.nyc_output
+.vscode
+
+
+
+

@@ -7,9 +7,9 @@
     "vuxtra": "./bin/vuxtra"
   },
   "scripts": {
-    "test": "npm run lint && cross-env NODE_ENV=test npm run build:vuxtra && nyc ava --verbose --serial test/ -- && nyc report --reporter=html",
+    "test": "cross-env NODE_ENV=test npm run build && nyc ava --verbose --serial test/ -- && nyc report --reporter=html",
     "coverage": "nyc report --reporter=text-lcov > coverage.lcov && codecov",
-    "lint": "eslint --ext .js,.vue bin lib pages test/*.js --ignore-pattern app",
+    "lint": "eslint --ext .js bin lib test/*.js --ignore-pattern app",
     "build": "rimraf dist/ && npm run build:all",
     "build:all": "rollup -c build/rollup.config.js",
     "watch": "npm run build:vuxtra -- -w"
