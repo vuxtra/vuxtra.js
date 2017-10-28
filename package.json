@@ -1,6 +1,6 @@
 {
   "name": "vuxtra",
-  "version": "0.1.0",
+  "version": "0.1.2",
   "description": "Vuxtra - Realtime based full stack framework based on (VUe + nuXT + extRA) ",
   "main": "index.js",
   "bin": {
