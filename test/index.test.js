@@ -11,7 +11,8 @@ test('VuxtraBoot Class', t => {
 test.serial('VuxtraBoot Devstart', async t => {
 
     const vuxtraBoot = new VuxtraBoot({
-        rootDir: resolve(__dirname, 'fixtures', 'basic')
+        rootDir: resolve(__dirname, 'fixtures', 'basic'),
+        srcDir: resolve(__dirname, 'fixtures', 'basic')
     })
     t.is(typeof vuxtraBoot, 'object')
 
@@ -46,6 +47,16 @@ test.serial('VuxtraBoot Devstart', async t => {
             }),
             new Promise((resolve, reject) => {
                 vuxtraBoot.hooks.vuxtraBuilt.tapPromise("vuxtraBuilt", (vuxtraBoot) => {
+                    resolve(vuxtraBoot)
+
+                })
+
+                vuxtraBoot.hooks.failSocketserver.tapPromise("failedSocketServer", (vuxtraBoot, e) => {
+                    reject(e)
+                })
+            }),
+            new Promise((resolve, reject) => {
+                vuxtraBoot.hooks.vuxtraStarted.tapPromise("vuxtraStarted", (vuxtraBoot) => {
                     resolve(vuxtraBoot)
 
                 })
