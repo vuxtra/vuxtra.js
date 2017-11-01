@@ -12,7 +12,10 @@ test.serial('VuxtraBoot Devstart', async t => {
 
     const vuxtraBoot = new VuxtraBoot({
         rootDir: resolve(__dirname, 'fixtures', 'basic'),
-        srcDir: resolve(__dirname, 'fixtures', 'basic')
+        srcDir: resolve(__dirname, 'fixtures', 'basic'),
+        nuxt: {
+            modulesDir: resolve(__dirname, '../node_modules')
+        }
     })
     t.is(typeof vuxtraBoot, 'object')
 
