@@ -14,14 +14,14 @@ npm-debug.log
 # Nuxt generate
 dist
 
-# Backpack build
-build
-
 # Coverage support
 coverage
 *.lcov
 .nyc_output
 .vscode
+
+# misc
+.DS_Store
 
 
 

@@ -46,24 +46,6 @@ const builds = {
         entry: resolve(libDir, 'socketserver/sccWorker.js'),
         file: resolve(distDir, 'sccWorker.js')
     },
-    nuxtVuxtraControlleres: {
-        entry: resolve(libDir, 'nuxt/modules/vuxtra/vuxtraController.js'),
-        file: resolve(distDir, 'nuxt/modules/vuxtra/vuxtraController.es.js'),
-        format: 'es'
-    },
-    nuxtVuxtraController: {
-        entry: resolve(libDir, 'nuxt/modules/vuxtra/vuxtraController.js'),
-        file: resolve(distDir, 'nuxt/modules/vuxtra/vuxtraController.js')
-    },
-    // nuxtModuleVuxtra: {
-    //     entry: resolve(libDir, 'nuxt/modules/vuxtra/index.js'),
-    //     file: resolve(distDir, 'nuxt/modules/vuxtra/index.js')
-    // },
-    // nuxtPluginVuxtra: {
-    //     entry: resolve(libDir, 'nuxt/modules/vuxtra/plugin.js'),
-    //     file: resolve(distDir, 'nuxt/modules/vuxtra/Plugin.js'),
-    // },
-
 }
 
 /* Config */
