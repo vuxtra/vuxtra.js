@@ -1,5 +1,5 @@
 /*!
- * Vuxtra.js v0.1.3
+ * Vuxtra.js v0.1.4
  * (c) 2017-2017 Faruk Brbovic
  * Released under the MIT License.
  */
@@ -15,8 +15,10 @@ var healthChecker = _interopDefault(require('sc-framework-health-check'));
 var Debug = _interopDefault(require('debug'));
 var nuxt = require('nuxt');
 var Tapable = _interopDefault(require('tapable'));
+var AsyncParallelHook = _interopDefault(require('tapable/lib/AsyncParallelHook'));
 var _ = require('lodash');
 var ___default = _interopDefault(_);
+var sharedCore = require('@vuxtra/shared-core');
 var fs = require('fs-extra');
 var fs__default = _interopDefault(fs);
 var chokidar = _interopDefault(require('chokidar'));
@@ -25,568 +27,6 @@ var webpack = _interopDefault(require('webpack'));
 var Exval = _interopDefault(require('exval'));
 var fs$1 = require('fs');
 var nodeExternals = _interopDefault(require('webpack-node-externals'));
-
-/*
-	MIT License http://www.opensource.org/licenses/mit-license.php
-	Author Tobias Koppers @sokra
-*/
-"use strict";
-
-class Hook {
-	constructor(args) {
-		if(!Array.isArray(args)) args = [];
-		this._args = args;
-		this.taps = [];
-		this.interceptors = [];
-		this.call = this._call = this.createCompileDelegate("call", "sync", args);
-		this.promise = this._promise = this.createCompileDelegate("promise", "promise", args);
-		this.callAsync = this._callAsync = this.createCompileDelegate("callAsync", "async", args.concat("_callback"));
-		this._x = undefined;
-	}
-
-	compile(options) {
-		const source = this.template(options);
-		return new Function(`"use strict"; return (${source});`)();
-	}
-
-	getTapType() {
-		if(this.interceptors.length > 0) return "intercept";
-		if(this.taps.length === 0) return "none";
-		if(this.taps.length === 1) {
-			const tap = this.taps[0];
-			return tap.type;
-		}
-		let type = this.taps[0].type;
-		for(let i = 1; i < this.taps.length; i++) {
-			const tap = this.taps[i];
-			if(tap.type !== type) return "multiple";
-		}
-		return "multiple-" + type;
-	}
-
-	createCall(type) {
-		const tap = this.getTapType();
-		if(tap === "sync" || tap === "async" || tap === "promise")
-			this._x = this.taps[0].fn;
-		else if(tap === "multiple-sync" || tap === "multiple-async" || tap === "multiple-promise")
-			this._x = this.taps.map(t => t.fn);
-		else
-			this._x = this.taps;
-		return this.compile({
-			args: this._args,
-			tap: tap,
-			type: type
-		});
-	}
-
-	createCompileDelegate(name, type, args) {
-		return new Function(args, `
-			this.${name} = this.createCall(${JSON.stringify(type)});
-			return this.${name}(${args.join(", ")});
-		`);
-	}
-
-	tap(options, fn) {
-		if(typeof options === "string")
-			options = { name: options };
-		if(typeof options !== "object" || options === null)
-			throw new Error("Invalid arguments to tap(options: Object, fn: function)");
-		options = Object.assign({ type: "sync", fn: fn }, options);
-		if(typeof options.name !== "string" || options.name === "")
-			throw new Error("Missing name for tap");
-		this._insert(options);
-	}
-
-	tapAsync(options, fn) {
-		if(typeof options === "string")
-			options = { name: options };
-		if(typeof options !== "object" || options === null)
-			throw new Error("Invalid arguments to tapAsync(options: Object, fn: function)");
-		options = Object.assign({ type: "async", fn: fn }, options);
-		if(typeof options.name !== "string" || options.name === "")
-			throw new Error("Missing name for tapAsync");
-		this._insert(options);
-	}
-
-	tapPromise(options, fn) {
-		if(typeof options === "string")
-			options = { name: options };
-		if(typeof options !== "object" || options === null)
-			throw new Error("Invalid arguments to tapPromise(options: Object, fn: function)");
-		options = Object.assign({ type: "promise", fn: fn }, options);
-		if(typeof options.name !== "string" || options.name === "")
-			throw new Error("Missing name for tapPromise");
-		this._insert(options);
-	}
-
-	withOptions(options) {
-		const mergeOptions = opt => Object.assign({}, options, typeof opt === "string" ? { name: opt } : opt);
-
-		// Prevent creating endless prototype chains
-		options = Object.assign({}, this._withOptions);
-		const base = this._withOptionsBase || this;
-		const newHook = Object.create(base);
-
-		newHook.tapAsync = (opt, fn) => base.tapAsync(mergeOptions(opt), fn),
-		newHook.tap = (opt, fn) => base.tap(mergeOptions(opt), fn);
-		newHook.tapPromise = (opt, fn) => base.tapPromise(mergeOptions(opt), fn);
-		newHook._withOptions = options;
-		newHook._withOptionsBase = options;
-		return newHook;
-	}
-
-	isUsed() {
-		return this.taps.length > 0 || this.interceptors.length > 0;
-	}
-
-	intercept(interceptor) {
-		this._resetCompilation();
-		this.interceptors.push(Object.assign({
-			call: () => {},
-			loop: () => {},
-			tap: tap => tap,
-		}, interceptor));
-	}
-
-	_resetCompilation() {
-		this.call = this._call;
-		this.callAsync = this._callAsync;
-		this.promise = this._promise;
-	}
-
-	_insert(item) {
-		this._resetCompilation();
-		let before;
-		if(typeof item.before === "string")
-			before = new Set([item.before]);
-		else if(Array.isArray(item.before)) {
-			before = new Set(item.before);
-		}
-		let stage = 0;
-		if(typeof item.stage === "number")
-			stage = item.stage;
-		let i = this.taps.length;
-		while(i > 0) {
-			i--;
-			const x = this.taps[i];
-			this.taps[i+1] = x;
-			const xStage = x.stage || 0;
-			if(before) {
-				if(before.has(x.name)) {
-					before.delete(x.name);
-					continue;
-				}
-				if(before.size > 0) {
-					continue;
-				}
-			}
-			if(xStage > stage) {
-				continue;
-			}
-			i++;
-			break;
-		}
-		this.taps[i] = item;
-	}
-}
-
-var Hook_1 = Hook;
-
-function createCommonjsModule(fn, module) {
-	return module = { exports: {} }, fn(module, module.exports), module.exports;
-}
-
-var simpleAsyncCases = createCommonjsModule(function (module, exports) {
-/*
-	MIT License http://www.opensource.org/licenses/mit-license.php
-	Author Tobias Koppers @sokra
-*/
-"use strict";
-
-exports.notBailing = (options) => {
-	const args = options.args.join(", ");
-	const argsWithCallback = args ? `${args}, _callback` : "_callback";
-	const argsWithComma = args ? `${args}, ` : "";
-	const tap = options.tap;
-	const type = options.type;
-	switch(`${tap} ${type}`) {
-		case "none async":
-			return `function(${argsWithCallback}) {
-				_callback();
-			}`;
-		case "none promise":
-			return `function(${args}) {
-				return Promise.resolve();
-			}`;
-		case "sync async":
-			return `function(${argsWithCallback}) {
-				try {
-					this._x(${args});
-				} catch(_e) {
-					_callback(_e);
-					return;
-				}
-				_callback();
-			}`;
-		case "sync promise":
-			return `function(${args}) {
-				return Promise.resolve().then(() => {
-					this._x(${args});
-				});
-			}`;
-		case "async async":
-			return `function(${argsWithCallback}) {
-				this._x(${argsWithComma}(_err) => {
-					if(_err) {
-						_callback(_err);
-						return;
-					}
-					_callback();
-				});
-			}`;
-		case "async promise":
-			return `function(${args}) {
-				return new Promise((_resolve, _reject) => {
-					let _isSync = true;
-					this._x(${argsWithComma}_err => {
-						if(_err) {
-							if(_isSync)
-								Promise.resolve().then(() => _reject(_err));
-							else
-								_reject(_err);
-							return;
-						}
-						_resolve();
-					});
-					_isSync = false;
-				});
-			}`;
-		case "promise async":
-			return `function(${argsWithCallback}) {
-				Promise.resolve(this._x(${args})).then(() => {
-					_callback();
-				}, _err => {
-					_callback(_err);
-				});
-			}`;
-		case "promise promise":
-			return `function(${args}) {
-				return Promise.resolve(this._x(${args})).then(() => {});
-			}`;
-		case "multiple-sync async":
-			return `function(${argsWithCallback}) {
-				try {
-					const _fns = this._x;
-					for(let _i = 0; _i < _fns.length; _i++) {
-						_fns[_i](${args});
-					}
-				} catch(_err) {
-					_callback(_err);
-					return;
-				}
-				_callback();
-			}`;
-		case "multiple-sync promise":
-			return `function(${args}) {
-				return Promise.resolve().then(() => {
-					const _fns = this._x;
-					for(let _i = 0; _i < _fns.length; _i++) {
-						_fns[_i](${args});
-					}
-				});
-			}`;
-	}
-};
-
-exports.bailing = (options) => {
-	const args = options.args.join(", ");
-	const argsWithCallback = args ? `${args}, _callback` : "_callback";
-	const argsWithComma = args ? `${args}, ` : "";
-	const tap = options.tap;
-	const type = options.type;
-	switch(`${tap} ${type}`) {
-		case "none async":
-			return `function(${argsWithCallback}) {
-				_callback();
-			}`;
-		case "none promise":
-			return `function(${args}) {
-				return Promise.resolve();
-			}`;
-		case "sync async":
-			return `function(${argsWithCallback}) {
-				let _result;
-				try {
-					_result = this._x(${args});
-				} catch(_e) {
-					_callback(_e);
-					return;
-				}
-				_callback(null, _result);
-			}`;
-		case "sync promise":
-			return `function(${args}) {
-				return Promise.resolve().then(() => this._x(${args}));
-			}`;
-		case "async async":
-			return `function(${argsWithCallback}) {
-				this._x(${argsWithCallback});
-			}`;
-		case "async promise":
-			return `function(${args}) {
-				return new Promise((_resolve, _reject) => {
-					let _isSync = true;
-					this._x(${argsWithComma}(_err, _result) => {
-						if(_err) {
-							if(_isSync)
-								Promise.resolve().then(() => _reject(_err));
-							else
-								_reject(_err);
-							return;
-						}
-						_resolve(_result);
-					});
-					_isSync = false;
-				});
-			}`;
-		case "promise async":
-			return `function(${argsWithCallback}) {
-				Promise.resolve(this._x(${args})).then(_result => {
-					_callback(null, _result);
-				}, _err => {
-					_callback(_err);
-				});
-			}`;
-		case "promise promise":
-			return `function(${args}) {
-				return this._x(${args});
-			}`;
-		case "multiple-sync async":
-			return `function(${argsWithCallback}) {
-				try {
-					const _fns = this._x;
-					for(let _i = 0; _i < _fns.length; _i++) {
-						const _result = _fns[_i](${args});
-						if(_result !== undefined) {
-							_callback(null, _result);
-							return;
-						}
-					}
-				} catch(_err) {
-					_callback(_err);
-					return;
-				}
-				_callback();
-			}`;
-		case "multiple-sync promise":
-			return `function(${args}) {
-				return new Promise(_resolve => {
-					const _fns = this._x;
-					for(let _i = 0; _i < _fns.length; _i++) {
-						const _result = _fns[_i](${args});
-						if(_result !== undefined) {
-							_resolve(_result);
-							return;
-						}
-					}
-					_resolve();
-				});
-			}`;
-	}
-};
-});
-
-/*
-	MIT License http://www.opensource.org/licenses/mit-license.php
-	Author Tobias Koppers @sokra
-*/
-"use strict";
-
-
-
-
-class AsyncParallelHook extends Hook_1 {
-	constructor(args) {
-		super(args);
-		this.call = this._call = undefined;
-	}
-
-	template(options) {
-		const simpleCase = simpleAsyncCases.notBailing(options);
-		if(simpleCase) return simpleCase;
-		const args = options.args.join(", ");
-		const argsWithCallback = args ? `${args}, _callback` : "_callback";
-		const argsWithComma = args ? `${args}, ` : "";
-		const tap = options.tap;
-		const type = options.type;
-		const isIntercept = tap == "intercept";
-		switch(`${tap} ${type}`) {
-			case "multiple-async async":
-				return `function(${argsWithCallback}) {
-					const _fns = this._x;
-					let _remaining = _fns.length;
-					const _handler = (_err) => {
-						if(_err && _remaining > 0) {
-							_remaining = -1;
-							_callback(_err);
-							return;
-						}
-						if(--_remaining === 0) {
-							_callback();
-						}
-					};
-					for(let _i = 0; _i < _fns.length; _i++) {
-						_fns[_i](${argsWithComma}_handler);
-					}
-				}`;
-			case "multiple-async promise":
-				return `function(${args}) {
-					return new Promise((_resolve, _reject) => {
-						const _fns = this._x;
-						let _remaining = _fns.length;
-						const _handler = (_err) => {
-							if(_err && _remaining > 0) {
-								_remaining = -1;
-								_reject(_err);
-								return;
-							}
-							if(--_remaining === 0) {
-								_resolve();
-							}
-						};
-						for(let _i = 0; _i < _fns.length; _i++) {
-							_fns[_i](${argsWithComma}_handler);
-						}
-					});
-				}`;
-			case "multiple-promise async":
-				return `function(${argsWithCallback}) {
-					const _fns = this._x;
-					let _remaining = _fns.length;
-					const _handler = () => {
-						if(--_remaining === 0) {
-							_callback();
-						}
-					}
-					const _handlerErr = (_err) => {
-						if(_remaining > 0) {
-							_remaining = -1;
-							_callback(_err);
-						}
-					}
-					for(let _i = 0; _i < _fns.length; _i++) {
-						Promise.resolve(_fns[_i](${args})).then(_handler, _handlerErr);
-					}
-				}`;
-			case "multiple-promise promise":
-				return `function(${args}) {
-					const _fns = this._x;
-					return Promise.all(_fns.map(_fn => _fn(${args}))).then(() => {});
-				}`;
-			case "multiple async":
-			case "intercept async":
-				return `function(${argsWithCallback}) {
-					const _taps = this._x;
-					${isIntercept ? `const _intercept = this.interceptors;
-						for(let _j = 0; _j < _intercept.length; _j++)
-							_intercept[_j].call(${args});
-					` : ""}
-					let _remaining = _taps.length;
-					const _handler = (_err) => {
-						if(_err && _remaining > 0) {
-							_remaining = -1;
-							_callback(_err);
-							return;
-						}
-						if(--_remaining === 0) {
-							_callback();
-						}
-					};
-					const _handlerSuccess = () => {
-						if(--_remaining === 0) {
-							_callback();
-						}
-					}
-					const _handlerErr = (_err) => {
-						if(_remaining > 0) {
-							_remaining = -1;
-							_callback(_err);
-						}
-					}
-					for(let _i = 0; _i < _taps.length; _i++) {
-						${isIntercept ? `let _tap = _taps[_i];
-						for(let _j = 0; _j < _intercept.length; _j++)
-							_tap = _intercept[_j].tap(_tap);
-						` : `const _tap = _taps[_i];`}
-						switch(_tap.type) {
-							case "sync":
-								try {
-									_tap.fn(${args});
-								} catch(_err) {
-									_handlerErr(_err);
-									break;
-								}
-								_handlerSuccess();
-								break;
-							case "async":
-								_tap.fn(${argsWithComma}_handler);
-								break;
-							case "promise":
-								Promise.resolve(_tap.fn(${args})).then(_handlerSuccess, _handlerErr);
-								break;
-						}
-					}
-				}`;
-			case "multiple promise":
-			case "intercept promise":
-				return `function(${args}) {
-					const _taps = this._x;
-					${isIntercept ? `const _intercept = this.interceptors;
-					for(let _j = 0; _j < _intercept.length; _j++)
-						_intercept[_j].call(${args});
-					` : ""}
-					let _earlyAbort = false;
-					return Promise.all(_taps.map(_tap => {
-						if(_earlyAbort) return;
-						${isIntercept ? `for(let _j = 0; _j < _intercept.length; _j++)
-							_tap = _intercept[_j].tap(_tap);
-						` : ""}
-						switch(_tap.type) {
-							case "sync":
-								try {
-									_tap.fn(${args});
-								} catch(_err) {
-									_earlyAbort = true;
-									return Promise.reject(_err);
-								}
-								return Promise.resolve();
-								case "async":
-								return new Promise((_resolve, _reject) => {
-									_tap.fn(${argsWithComma}_err => {
-										if(_err) {
-											_earlyAbort = true;
-											_reject(_err);
-											return;
-										}
-										_resolve();
-									});
-								});
-								break;
-							case "promise":
-								return _tap.fn(${args});
-								break;
-						}
-					})).then(() => {});
-				}`;
-			/* istanbul ignore next */
-			default:
-				/* istanbul ignore next */
-				throw new Error(`Unsupported tap '${tap}' or type '${type}'`);
-		}
-	}
-}
-
-var AsyncParallelHook_1 = AsyncParallelHook;
 
 class Controller extends Tapable {
     constructor(_options, _socket) {
@@ -597,214 +37,15 @@ class Controller extends Tapable {
 
 }
 
-class Request {
-    constructor (rawRequest = null) {
-        this._messageType = 'req';
-        if (rawRequest === null) {
-            rawRequest = {};
-        }
-        this.meta   = (typeof rawRequest.meta !== 'undefined' && rawRequest.meta !== null ? rawRequest.meta : {});
-        this.data   = (typeof rawRequest.data !== 'undefined' ? rawRequest.data : null);
-        this.id     = (typeof rawRequest.id !== 'undefined' ? rawRequest.id : null);
-        this.type   = (typeof rawRequest.type !== 'undefined' ? rawRequest.type : 'generic');
-    }
-    // setters
-    setData(data) {
-        this.data = data;
-        return this
-    }
-    setMeta(key, val) {
-        this.meta[key] = val;
-        return this
-    }
-    setId(id) {
-        this.id = id;
-        return this
-    }
-    setType(type) {
-        this.type = type;
-        return this
-    }
-    // getters
-    getData() {
-        return this.data
-    }
-    getMeta(key, defaultVal = null) {
-        if (typeof this.meta[key] !== 'undefined') {
-            return this.meta[key]
-        }
-        return defaultVal
-    }
-    getId(id) {
-        return this.id
-    }
-    getType(type) {
-        return this.type
-    }
-}
-
-class ServiceRequest extends Request {
-    constructor (rawRequest = null) {
-        super(rawRequest);
-        // if blank than we set the service
-        if (rawRequest === null) {
-            this.setType('service');
-        }
-    }
-
-    setServiceName(serviceName) {
-        this.setMeta('serName', serviceName);
-        return this
-    }
-
-    setServiceAction(serviceAction) {
-        this.setMeta('serAction', serviceAction);
-        return this
-    }
-
-    getServiceName() {
-        return this.getMeta('serName')
-    }
-
-    getServiceAction() {
-        return this.getMeta('serAction')
-    }
-}
-
-class Response {
-    constructor (rawResponse = {}) {
-        this._messageType = 'res';
-        this.meta = (typeof rawResponse.meta !== 'undefined' && rawResponse.meta !== null ? rawResponse.meta : {});
-        this.data = (typeof rawResponse.data !== 'undefined' ? rawResponse.data : null);
-        this.id = (typeof rawResponse.id !== 'undefined' ? rawResponse.id : null);
-        this.type = (typeof rawResponse.type !== 'undefined' ? rawResponse.type : 'generic');
-        this.statusCode = (typeof rawResponse.statusCode !== 'undefined' ? rawResponse.statusCode : 200);
-        this.statusMessage = (typeof rawResponse.statusMessage !== 'undefined' ? rawResponse.statusMessage : 'success');
-    }
-
-    // setters
-    setData(data) {
-        this.data = data;
-        return this
-    }
-    setMeta(key, val) {
-        this.meta[key] = val;
-        return this
-    }
-    setId(id) {
-        this.id = id;
-        return this
-    }
-    setType(type) {
-        this.type = type;
-        return this
-    }
-    ss(code, message = null) {
-        this.statusCode = code;
-        this.statusMessage = message;
-        return this
-    }
-    ssSuccess(msg = 'success') {
-        this.statusCode = 200;
-        this.statusMessage = msg;
-        return this
-    }
-    ssClientError(msg = 'Client Error') {
-        this.statusCode = 400;
-        this.statusMessage = msg;
-        return this
-    }
-    ssClientErrorNotFound(msg = 'Client Error: Not Found') {
-        this.statusCode = 404;
-        this.statusMessage = msg;
-        return this
-    }
-    ssClientErrorInvalidRequest(msg = 'Client Error: Not Found') {
-        this.statusCode = 404;
-        this.statusMessage = msg;
-        return this
-    }
-    ssServerError(msg = 'Server Error') {
-        this.statusCode = 500;
-        this.statusMessage = msg;
-        return this
-    }
-
-    // getters
-    getData() {
-        return this.data
-    }
-    getMeta(key, defaultVal = null) {
-        if (typeof this.meta[key] !== undefined) {
-            return this.meta[key]
-        }
-        return defaultVal
-    }
-    getId(id) {
-        return this.id
-    }
-    getType(type) {
-        return this.type
-    }
-    getStatusCode() {
-        return this.statusCode
-    }
-    getStatusMessage() {
-        return this.statusMessage
-    }
-
-    // checkers
-    isStatusSuccess() {
-        if (this.statusCode >= 200 && this.statusCode <300) {
-            return true;
-        }
-        return false
-    }
-    isStatusError() {
-        if (this.statusCode >= 400 && this.statusCode <600) {
-            return true;
-        }
-        return false
-    }
-}
-
-class ServiceResponse extends Response {
-    constructor (rawRequest = {}) {
-        super(rawRequest);
-        this.setType('service');
-    }
-
-    setServiceName(serviceName) {
-        this.setMeta('serName', serviceName);
-        return this
-    }
-
-    setServiceAction(serviceAction) {
-        this.setMeta('serAction', serviceAction);
-        return this
-    }
-
-    getServiceName() {
-        return this.getMeta('serName')
-    }
-
-
-    getServiceAction() {
-        return this.getMeta('serAction')
-    }
-
-
-}
-
 class ServiceController extends Controller {
     constructor(_options) {
         super(_options);
     }
 
     process(data, res) {
-        let request = new ServiceRequest(data);
+        let request = new sharedCore.ServiceRequest(data);
 
-        let response = new ServiceResponse();
+        let response = new sharedCore.ServiceResponse();
         response.setId(request.getId());
         response.ssSuccess();
         response.setServiceName(request.getServiceName());
@@ -832,7 +73,7 @@ class ServiceController extends Controller {
             let ctx = { request, response
 
                 // here we process it weather is sync or async
-            };Promise.resolve(service[request.getServiceAction()].apply(ctx, ___default.concat(ctx, ___default.values(request.getData())))).then(result => {
+            };Promise.resolve(service[request.getServiceAction()].apply(ctx, ___default.values(request.getData()))).then(result => {
                 response.setData(result);
                 res(null, response);
             });
@@ -855,9 +96,9 @@ class VuxtraServer extends Tapable {
         super();
         // setup available hooks
         this.hooks = {
-            init: new AsyncParallelHook_1(["vuxtraServer"]),
-            ready: new AsyncParallelHook_1(["vuxtraServer"]),
-            socketConnection: new AsyncParallelHook_1(["socket"])
+            init: new AsyncParallelHook(["vuxtraServer"]),
+            ready: new AsyncParallelHook(["vuxtraServer"]),
+            socketConnection: new AsyncParallelHook(["socket"])
         };
         this.options = options;
         this.socketServer = null;
@@ -1203,11 +444,11 @@ class VuxtraBuilder extends Tapable {
 
         // setup available hooks
         this.hooks = {
-            init: new AsyncParallelHook_1(["builder"]),
-            built: new AsyncParallelHook_1(["builder"]),
-            compile: new AsyncParallelHook_1(["compiler"]),
-            pluginDone: new AsyncParallelHook_1(["compiler"]),
-            compileDone: new AsyncParallelHook_1(["compiler"])
+            init: new AsyncParallelHook(["builder"]),
+            built: new AsyncParallelHook(["builder"]),
+            compile: new AsyncParallelHook(["compiler"]),
+            pluginDone: new AsyncParallelHook(["compiler"]),
+            compileDone: new AsyncParallelHook(["compiler"])
         };
 
         this.options = _options;
@@ -1370,7 +611,6 @@ class VuxtraBuilder extends Tapable {
             _this4.compiler.plugin('done', (() => {
                 var _ref = asyncToGenerator(function* (stats) {
                     // Don't reload failed builds
-                    /* istanbul ignore if */
                     if (stats.hasErrors()) {
                         return;
                     }
@@ -1394,7 +634,6 @@ class VuxtraBuilder extends Tapable {
                         // Build and watch for changes
 
                         compiler.watch(_this4.options.watchers.webpack, function (err) {
-                            /* istanbul ignore if */
                             if (err) {
                                 return reject(err);
                             }
@@ -1403,7 +642,6 @@ class VuxtraBuilder extends Tapable {
                     } else {
                         // --- Production Build ---
                         compiler.run(function (err, stats) {
-                            /* istanbul ignore if */
                             if (err) {
                                 return reject(err);
                             }
@@ -1412,7 +650,6 @@ class VuxtraBuilder extends Tapable {
                             // Show build stats for production
                             console.log(stats.toString(_this4.webpackStats)); // eslint-disable-line no-console
 
-                            /* istanbul ignore if */
                             if (stats.hasErrors()) {
                                 return reject(new Error('Webpack build exited with errors'));
                             }
@@ -1433,7 +670,6 @@ class VuxtraBuilder extends Tapable {
         const options = Object.assign({}, this.options.watchers.chokidar, {
             ignoreInitial: true
         });
-        /* istanbul ignore next */
         const refreshWebpack = ___default.debounce(() => {
             console.log('refreshing webpack...');
             this.buildWebpack();
@@ -1496,7 +732,6 @@ module.exports.run = function (worker) {
 
     // Init Nuxt.js
     const nuxt$$1 = new nuxt.Nuxt(config.nuxt);
-    console.log('config.nuxt', nuxt$$1);
 
     let builderPromise = new Promise((resolve$$1, reject) => {
 

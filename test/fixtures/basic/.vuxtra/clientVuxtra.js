@@ -1,4 +1,4 @@
-export  function services ($_internalService, $_vuxtraController) {
+module.exports.services = function ($_internalService, $_vuxtraController) {
 
     var module = {  }
 

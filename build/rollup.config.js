@@ -10,6 +10,7 @@ const packageJson = require('../package.json')
 const dependencies = Object.keys(packageJson.dependencies)
 const version = packageJson.version || process.env.VERSION
 
+
 /* banner */
 const banner =
     '/*!\n' +
@@ -57,7 +58,7 @@ function genConfig (opts) {
             format: opts.format || 'cjs',
             sourcemap: true
         },
-        external: ['fs', 'path', 'http']
+        external: ['fs', 'path', 'http','tapable/lib/AsyncParallelHook']
             .concat(dependencies, opts.external),
         banner: opts.banner || banner,
         name: opts.modulename || 'Vuxtra',
@@ -79,16 +80,16 @@ function genConfig (opts) {
                     'external-helpers'
                 ],
                 presets: [
-                    ['env', {
+                    ['env',  {
                         targets: {
-                            node: '8.7.0'
+                            node: '8.5.0'
                         },
                         modules: false
                     }]
                 ],
                 'env': {
                     'test': {
-                        'plugins': [ 'istanbul' ]
+
                     }
                 }
             }, opts.babel)),

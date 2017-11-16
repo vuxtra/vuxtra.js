@@ -1,5 +1,5 @@
 /*!
- * Vuxtra.js v0.1.3
+ * Vuxtra.js v0.1.4
  * (c) 2017-2017 Faruk Brbovic
  * Released under the MIT License.
  */
