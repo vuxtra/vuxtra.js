@@ -323,7 +323,7 @@ class VuxtraBoot extends Tapable {
     startProd(port = 3000, host = 'localhost') {}
 
     close() {
-        this.do;
+        this.socketCluster.killWorkers();
     }
 
     startSocketCluster(port = 3000, host = 'localhost') {
