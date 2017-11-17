@@ -35,10 +35,31 @@ test.before('Init Vuxtra', async t => {
 
     vuxtraBoot.startDev(port)
 
-    await Promise.all([
+    let promisaAll = await Promise.all([
         new Promise((resolve, reject) => {
             vuxtraBoot.hooks.readySocketserver.tapPromise("readySocketServer", (vuxtraBoot) => {
                 resolve(vuxtraBoot)
+            })
+
+            vuxtraBoot.hooks.failSocketserver.tapPromise("failedSocketServer", (vuxtraBoot, e) => {
+                reject(e)
+            })
+        }),
+        new Promise((resolve, reject) => {
+            vuxtraBoot.hooks.readySocketserverWorkerCluster.tapPromise("readySocketserverWorkerCluster", (vuxtraBoot) => {
+                resolve(vuxtraBoot)
+
+            })
+
+            vuxtraBoot.hooks.failSocketserver.tapPromise("failedSocketServer", (vuxtraBoot, e) => {
+                reject(e)
+
+            })
+        }),
+        new Promise((resolve, reject) => {
+            vuxtraBoot.hooks.vuxtraBuilt.tapPromise("vuxtraBuilt", (vuxtraBoot) => {
+                resolve(vuxtraBoot)
+
             })
 
             vuxtraBoot.hooks.failSocketserver.tapPromise("failedSocketServer", (vuxtraBoot, e) => {
