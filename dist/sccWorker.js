@@ -697,7 +697,7 @@ module.exports.run = function (worker) {
     var scServer = worker.scServer;
 
     process.on('unhandledRejection', (reason, p) => {
-        //console.log('Unhandled Rejection at: Promise', p, 'reason:', reason);
+        console.log('Unhandled Rejection at: Promise', p, 'reason:', reason);
         worker.sendToMaster({ type: 'error', subtype: 'worker', e: p, message: reason });
     });
 

@@ -81,5 +81,5 @@ test.serial('VuxtraBoot Devstart', async t => {
 })
 
 test.after('Closing vuxtra', t => {
-    vuxtraBoot.close()
+    //vuxtraBoot.close()
 })
