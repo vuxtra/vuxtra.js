@@ -17,7 +17,6 @@ const hostname = 'localhost'
 const url = (route) => hostname + ':' + port + route
 
 let vuxtraBoot = null
-let vuxtraController = null
 let options = {
     port: port,
     hostname: hostname,
@@ -79,11 +78,10 @@ test.before('Init Vuxtra', async t => {
 
     ])
 
-    vuxtraController = new VuxtraController(options)
-
 })
 
 test('services.basic.returnParamsObject', async t => {
+    let vuxtraController = new VuxtraController(options)
     let p1 = 'ptest1'
     let p2 = 'ptest2'
     let response = await vuxtraController.services.basic.returnParamsObject(p1, p2)
@@ -96,6 +94,7 @@ test('services.basic.returnParamsObject', async t => {
 })
 
 test('services.basic.returnString', async t => {
+    let vuxtraController = new VuxtraController(options)
     let match = 'string-returned'
     let response = await vuxtraController.services.basic.returnString()
 
