@@ -87,7 +87,7 @@ test('services.basic.returnParamsObject', async t => {
     let p1 = 'ptest1'
     let p2 = 'ptest2'
     let response = await vuxtraController.services.basic.returnParamsObject(p1, p2)
-    if (response !== null && typeof response.p1 !== 'undefined' && response.p1 === p1 && response.p2 === p2 ) {
+    if (response !== null && typeof response.getData().p1 !== 'undefined' && response.getData().p1 === p1 && response.getData().p2 === p2 ) {
         t.pass('returnParamsObject params matched')
     }
     else {
@@ -99,11 +99,60 @@ test('services.basic.returnString', async t => {
     let match = 'string-returned'
     let response = await vuxtraController.services.basic.returnString()
 
-    if (response !== null && response.valueOf() === match ) {
+    if (response !== null && response.getData() === match ) {
         t.pass('returnString response matched')
     }
     else {
         t.fail('returnString response not matched')
+    }
+})
+
+test('services.basic.returnInt', async t => {
+    let match = 55
+    let response = await vuxtraController.services.basic.returnInt()
+
+    if (response !== null && response.getData() === match ) {
+        t.pass('returnInt response matched')
+    }
+    else {
+        t.fail('returnInt response not matched')
+    }
+})
+
+test('services.basic.returnServerError', async t => {
+
+    let response = await vuxtraController.services.basic.returnServerError()
+
+    if (response !== null && response.isStatusError() ) {
+        t.pass('returnServerError proper error matched')
+    }
+    else {
+        t.fail('returnServerError response not matched')
+    }
+})
+
+test('services.basic.returnClientErrorNotFound', async t => {
+
+    let response = await vuxtraController.services.basic.returnClientErrorNotFound()
+
+    if (response !== null && response.getStatusCode() === 404) {
+        t.pass('returnClientErrorNotFound exact error matched')
+    }
+    else {
+        t.fail('returnClientErrorNotFound exact not matched')
+    }
+})
+
+test('services.auth.isAuthenticated', async t => {
+
+    let loginResponse = await vuxtraController.services.auth.login('test_user', 'test_pass')
+    let response = await vuxtraController.services.auth.isAuthenticated()
+
+    if (response !== null && response.getData() === true) {
+        t.pass('auth is authenticated')
+    }
+    else {
+        t.fail('auth is NOT authenticated')
     }
 })
 

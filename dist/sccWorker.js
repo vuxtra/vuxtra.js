@@ -19,6 +19,7 @@ var AsyncParallelHook = _interopDefault(require('tapable/lib/AsyncParallelHook')
 var _ = require('lodash');
 var ___default = _interopDefault(_);
 var sharedCore = require('@vuxtra/shared-core');
+var crypto = _interopDefault(require('crypto'));
 var fs = require('fs-extra');
 var fs__default = _interopDefault(fs);
 var chokidar = _interopDefault(require('chokidar'));
@@ -29,17 +30,17 @@ var fs$1 = require('fs');
 var nodeExternals = _interopDefault(require('webpack-node-externals'));
 
 class Controller extends Tapable {
-    constructor(_options, _socket) {
+    constructor(_options, _session) {
         super();
         this.options = _options;
-        this.socket = _socket;
+        this.session = _session;
     }
 
 }
 
 class ServiceController extends Controller {
-    constructor(_options) {
-        super(_options);
+    constructor(_options, session) {
+        super(_options, session);
     }
 
     process(data, res) {
@@ -70,7 +71,7 @@ class ServiceController extends Controller {
                 return;
             }
 
-            let ctx = { request, response
+            let ctx = { '$request': request, '$response': response, '$session': this.session
 
                 // here we process it weather is sync or async
             };Promise.resolve(service[request.getServiceAction()].apply(ctx, ___default.values(request.getData()))).then(result => {
@@ -87,6 +88,149 @@ class ServiceController extends Controller {
             res(null, response);
             return;
         }
+    }
+
+}
+
+class AuthToken {
+    constructor(rawToken = {}) {
+        if (rawToken === null) {
+            rawToken = {};
+        }
+        this.v = typeof rawToken.v !== 'undefined' ? rawToken.v : 0;
+        this.uid = typeof rawToken.uid !== 'undefined' ? rawToken.uid : null;
+        this.sid = typeof rawToken.sid !== 'undefined' ? rawToken.sid : null;
+        this.ct = typeof rawToken.ct !== 'undefined' ? rawToken.ct : null;
+    }
+
+    // setters
+    setUserId(data) {
+        this.v++;
+        this.uid = data;
+        return this;
+    }
+
+    setSessionId(data) {
+        this.v++;
+        this.sid = data;
+        return this;
+    }
+
+    setCreatedTime(data) {
+        this.v++;
+        this.ct = data;
+        return this;
+    }
+
+    // getters
+    getUserId() {
+        return this.uid;
+    }
+
+    getSessionId() {
+        return this.sid;
+    }
+
+    getCreatedTime() {
+        return this.ct;
+    }
+
+}
+
+// Unique ID creation requires a high quality random # generator.  In node.js
+// this is pretty straight-forward - we use the crypto API.
+
+var rb = crypto.randomBytes;
+
+function rng() {
+  return rb(16);
+}
+
+var rng_1 = rng;
+
+/**
+ * Convert array of 16 byte values to UUID string format of the form:
+ * XXXXXXXX-XXXX-XXXX-XXXX-XXXXXXXXXXXX
+ */
+var byteToHex = [];
+for (var i = 0; i < 256; ++i) {
+  byteToHex[i] = (i + 0x100).toString(16).substr(1);
+}
+
+function bytesToUuid(buf, offset) {
+  var i = offset || 0;
+  var bth = byteToHex;
+  return bth[buf[i++]] + bth[buf[i++]] +
+          bth[buf[i++]] + bth[buf[i++]] + '-' +
+          bth[buf[i++]] + bth[buf[i++]] + '-' +
+          bth[buf[i++]] + bth[buf[i++]] + '-' +
+          bth[buf[i++]] + bth[buf[i++]] + '-' +
+          bth[buf[i++]] + bth[buf[i++]] +
+          bth[buf[i++]] + bth[buf[i++]] +
+          bth[buf[i++]] + bth[buf[i++]];
+}
+
+var bytesToUuid_1 = bytesToUuid;
+
+function v4(options, buf, offset) {
+  var i = buf && offset || 0;
+
+  if (typeof(options) == 'string') {
+    buf = options == 'binary' ? new Array(16) : null;
+    options = null;
+  }
+  options = options || {};
+
+  var rnds = options.random || (options.rng || rng_1)();
+
+  // Per 4.4, set bits for version and `clock_seq_hi_and_reserved`
+  rnds[6] = (rnds[6] & 0x0f) | 0x40;
+  rnds[8] = (rnds[8] & 0x3f) | 0x80;
+
+  // Copy bytes to buffer, if provided
+  if (buf) {
+    for (var ii = 0; ii < 16; ++ii) {
+      buf[i + ii] = rnds[ii];
+    }
+  }
+
+  return buf || bytesToUuid_1(rnds);
+}
+
+var v4_1 = v4;
+
+class Session {
+    constructor(socket, authToken = null) {
+        this._socket = socket;
+        if (authToken === null) {
+            console.log('authnull', this._socket.getAuthToken());
+            this.authToken = new AuthToken(this._socket.getAuthToken());
+            console.log('auththoken', this.authToken);
+            this.authToken.setSessionId(v4_1());
+        } else {
+            this.authToken = authToken;
+        }
+    }
+
+    generateUUID() {
+        return v4_1();
+    }
+
+    authenticate(userUUID) {
+        this.authToken.setUserId(userUUID);
+        return this;
+    }
+
+    isAuthenticated() {
+        return this.authToken.getUserId() !== null;
+    }
+
+    isSession() {
+        return this.authToken.getSessionId() !== null;
+    }
+
+    getSocket() {
+        return this._socket;
     }
 
 }
@@ -124,30 +268,32 @@ class VuxtraServer extends Tapable {
 
             this.hooks.socketConnection.promise(socket);
 
-            this.processServiceRequest(socket);
-
-            var interval = setInterval(function () {
-                socket.emit('rand', {
-                    rand: Math.floor(Math.random() * 5)
-                });
-            }, 1000);
+            this.processServiceRequest(socket, new Session(socket));
 
             socket.on('disconnect', function () {
-                clearInterval(interval);
+                // TO DO : do some graceful closing here
             });
         });
 
         this.hooks.ready.promise(this);
     }
 
-    processServiceRequest(socket) {
+    processServiceRequest(socket, session) {
+        // set initial socket server auth token, we use it for session tracking
+        console.log('potential paylod', session.authToken);
+        socket.setAuthToken(session.authToken);
+
         // process service calls
         socket.on('service.call', (data, res) => {
             if (this.serviceController === null) {
-                this.serviceController = new ServiceController(this.options, socket);
+                this.serviceController = new ServiceController(this.options, session);
             }
-
+            let currentAuthTokenVersion = session.authToken.v;
             this.serviceController.process(data, res);
+            if (currentAuthTokenVersion !== session.authToken.v) {
+                // we record any changes to the authtoken during controller processing
+                socket.setAuthToken(session.authToken);
+            }
         });
     }
 }
@@ -645,7 +791,6 @@ class VuxtraBuilder extends Tapable {
                             if (err) {
                                 return reject(err);
                             }
-                            if (err) return console.error(err); // eslint-disable-line no-console
 
                             // Show build stats for production
                             console.log(stats.toString(_this4.webpackStats)); // eslint-disable-line no-console

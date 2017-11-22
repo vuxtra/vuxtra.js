@@ -73,6 +73,7 @@
     "socketcluster-client": "^8.0.1",
     "tapable": "^1.0.0-beta.1",
     "un-eval": "^1.1.0",
+    "uuid": "^3.1.0",
     "vue-template-compiler": "^2.5.3",
     "webpack": "^3.7.1",
     "webpack-bundle-analyzer": "^2.9.0",

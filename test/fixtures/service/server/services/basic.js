@@ -16,11 +16,13 @@ export default {
         return 55
     },
 
-    returnBool: function () {
-        return true
+    returnServerError: function () {
+        this.$response.ssServerError('test error')
+        return false
     },
 
-    returnNull: function () {
+    returnClientErrorNotFound: function () {
+        this.$response.ssClientErrorNotFound('client error occured')
         return null
     },
 

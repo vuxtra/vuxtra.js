@@ -106,8 +106,8 @@
     stack-trace "0.0.10"
 
 "@vuxtra/nuxt-client-module@git+https://github.com/vuxtra/nuxt-client-module.git":
-  version "0.1.7"
-  resolved "git+https://github.com/vuxtra/nuxt-client-module.git#a5539e35d650413effedb42fdc89a1dffd4067a3"
+  version "0.1.8"
+  resolved "git+https://github.com/vuxtra/nuxt-client-module.git#c980330a0fe6097af12c10ffcb3c371096c7def4"
   dependencies:
     "@vuxtra/shared-core" "git+https://github.com/vuxtra/shared-core.git"
     lodash "^4.17.4"
@@ -7036,7 +7036,7 @@ utils-merge@1.0.1:
   version "1.0.1"
   resolved "https://registry.yarnpkg.com/utils-merge/-/utils-merge-1.0.1.tgz#9f95710f50a267947b2ccc124741c1028427e713"
 
-uuid@3.1.0, uuid@^3.0.0:
+uuid@3.1.0, uuid@^3.0.0, uuid@^3.1.0:
   version "3.1.0"
   resolved "https://registry.yarnpkg.com/uuid/-/uuid-3.1.0.tgz#3dd3d3e790abc24d7b0d3a034ffababe28ebbc04"
 
